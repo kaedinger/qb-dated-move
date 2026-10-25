@@ -1,0 +1,3 @@
+# Keep the script runnable in bash on Unraid even if edited on Windows
+*.sh text eol=lf
+*.md text eol=lf
