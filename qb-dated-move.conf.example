@@ -1,0 +1,24 @@
+# qb-dated-move.conf
+#
+# Copy to qb-dated-move.conf next to the script (or point CONF_FILE at it),
+# fill in your values and protect it: chmod 600 qb-dated-move.conf
+# It is sourced by bash, so use plain shell syntax. Anything left out keeps
+# the default from the script.
+
+QB_URL="http://localhost:8080"
+QB_USER="admin"
+QB_PASS="changeme"
+
+# Container paths exactly as qBittorrent shows them, no trailing slash
+FINAL_DIRS=(
+    "/data/a"
+    "/data/b"
+)
+
+# Optional overrides. Keep the ${VAR:-...} form for DRY_RUN and
+# MIN_AGE_MONTHS so per-run env vars still win.
+#DRY_RUN="${DRY_RUN:-0}"
+#MIN_AGE_MONTHS="${MIN_AGE_MONTHS:-}"
+#TZ_NAME="Europe/Berlin"
+#MOVE_TIMEOUT=1800
+#LOG_FILE="/config/scripts/qb-dated-move.log"

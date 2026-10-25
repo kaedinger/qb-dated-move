@@ -12,30 +12,28 @@ If any top-level file/folder of the torrent already exists in the target
 (on disk, claimed by another torrent in qB, or claimed earlier in the same
 run), the script tries `20261015_1`, `20261015_2`, ... instead.
 
-Torrents in subfolders (e.g. `/data/toast/test` when only `/data/toast` is
-listed) are left alone. Subfolders can be listed as final dirs themselves;
-nesting works fine.
+Torrents in subfolders of a final dir are left alone, unless that subfolder is
+listed as a final dir itself.
 
-## Environment
+## Requirements
 
-- Unraid, container `binhex-qbittorrentvpn`, qBittorrent 5.2.4
-- Script lives in the container at `/config/scripts/qb-dated-move.sh`
-  (host: `/mnt/user/appdata/binhex-qbittorrentvpn/scripts/`)
-- WebUI reached from inside the container via `http://localhost:8080`
-- Needs `curl`, `jq`, `flock` (all present in the image)
+- qBittorrent with WebUI (tested: 5.2.4 in `binhex-qbittorrentvpn` on Unraid)
+- `bash`, `curl`, `jq`, `flock` where the script runs (all present in the
+  binhex image)
 
 ## Setup
 
-1. Fill in the config block: `QB_USER`, `QB_PASS`, `FINAL_DIRS`
-   (container paths as qB shows them, no trailing slash).
-   This copy has placeholder credentials and paths.
-2. qBittorrent: Tools → Options → Downloads → Run external program →
+1. Put `qb-dated-move.sh` into the container, e.g. `/config/scripts/`.
+2. Copy `qb-dated-move.conf.example` to `qb-dated-move.conf` next to it, fill
+   in `QB_USER`, `QB_PASS`, `FINAL_DIRS` (container paths as qB shows them, no
+   trailing slash) and `chmod 600` it. It must be readable by the user qB runs
+   as. A different location can be set via `CONF_FILE`.
+3. qBittorrent: Tools → Options → Downloads → Run external program →
    **Run on torrent finished**:
 
        /bin/bash /config/scripts/qb-dated-move.sh
 
-   qB doesn't run this through a shell, so env-var prefixes don't work there;
-   the defaults in the file apply.
+   qB doesn't run this through a shell, so env-var prefixes don't work there.
 
 ## Options (env vars, per run)
 
@@ -50,14 +48,17 @@ Example manual run inside the container:
 
 ## Behaviour notes
 
-- Log: `/config/scripts/qb-dated-move.log` (~5 lines per run + 1 per move).
-- A lock (`/tmp/qb-dated-move.lock`) serialises runs; each run waits until qB
-  has finished its moves (max `MOVE_TIMEOUT`, 1800 s) before releasing it.
-- Accepted race: a torrent moved into a final dir by hand stays there until
-  the next finished download triggers the script. Two same-named torrents
-  moved into the same final dir in that window will still overwrite.
-- Torrents with Automatic Torrent Management enabled weren't tested (not used).
-- Before big runs: back up `/config/qBittorrent/BT_backup` (resume data).
+- Log: `/config/scripts/qb-dated-move.log`, trimmed automatically.
+- At the end of each run, dated folders (`YYYYMMDD`, `YYYYMMDD_N`) directly in
+  a final dir that contain no files anymore are removed, unless qB still
+  uses them as a save path.
+- Runs are serialised by a lock; each run holds it until qB has finished its
+  moves (max `MOVE_TIMEOUT`, 1800 s).
+- A torrent moved into a final dir by hand stays there until the next finished
+  download triggers the script. Two same-named torrents moved into the same
+  final dir in that window will still overwrite.
+- Torrents with Automatic Torrent Management enabled are untested.
+- Before big runs, back up `/config/qBittorrent/BT_backup` (resume data).
 
 ## Testing the clash handling
 
@@ -65,18 +66,6 @@ Example manual run inside the container:
     DRY_RUN=1 /config/scripts/qb-dated-move.sh   # expect -> 20261015_1
     # remove the placeholder afterwards
 
-## Optional: cap the log size
+## License
 
-Insert after the `log()` definition:
-
-    if [[ -f "$LOG_FILE" ]] && (( $(wc -l < "$LOG_FILE") > 5000 )); then
-        tail -n 2000 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
-    fi
-
-## Fixes made during development
-
-- Login check no longer relies on qB returning `Ok.` (5.2.4 returned an empty
-  body); the session is verified with `app/version` instead.
-- Empty associative array tripped `set -u` in the container's bash; replaced
-  the `${#EXPECTED[@]}` check with a plain counter.
-- curl got connect/total timeouts so a blocked connection can't hang a run.
+GPL-3.0, see [LICENSE](LICENSE).
