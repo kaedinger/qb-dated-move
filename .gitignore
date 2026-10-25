@@ -1,3 +1,4 @@
 *.log
 *.lock
 qb-dated-move.conf
+*.code-workspace
